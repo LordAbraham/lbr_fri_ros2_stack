@@ -289,17 +289,29 @@ hardware_interface::return_type SystemInterface::read(const rclcpp::Time & /*tim
                            << " Hz or more" << lbr_fri_ros2::ColorScheme::ENDC);
   }
 
-  // exit once robot exits COMMANDING_ACTIVE (for safety)
-  if (exit_commanding_active_(static_cast<KUKA::FRI::ESessionState>(hw_session_state_),
-                              static_cast<KUKA::FRI::ESessionState>(hw_lbr_state_.session_state))) {
+  // exit once connection to robot is lost (for safety)
+  if (static_cast<KUKA::FRI::ESessionState>(hw_lbr_state_.session_state) ==
+      KUKA::FRI::ESessionState::IDLE) {
     RCLCPP_ERROR_STREAM(rclcpp::get_logger(LOGGER_NAME),
                         lbr_fri_ros2::ColorScheme::ERROR
-                            << "LBR left COMMANDING_ACTIVE. Please re-run lbr_bringup"
+                            << "LBR connection lost (IDLE). Please re-run lbr_bringup"
                             << lbr_fri_ros2::ColorScheme::ENDC);
     app_ptr_->request_stop();
     app_ptr_->close_udp_socket();
-    ft_estimator_ptr_->request_stop();
+    if (ft_estimator_ptr_) {
+      ft_estimator_ptr_->request_stop();
+    }
     return hardware_interface::return_type::ERROR;
+  }
+
+  // keep running once robot exits COMMANDING_ACTIVE, the client keeps monitoring and resumes
+  // commanding once the robot re-enters COMMANDING_ACTIVE (e.g. soft / hard mode switch)
+  if (exit_commanding_active_(static_cast<KUKA::FRI::ESessionState>(hw_session_state_),
+                              static_cast<KUKA::FRI::ESessionState>(hw_lbr_state_.session_state))) {
+    RCLCPP_WARN_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                       lbr_fri_ros2::ColorScheme::WARNING
+                           << "LBR left COMMANDING_ACTIVE. Waiting for robot to resume commanding"
+                           << lbr_fri_ros2::ColorScheme::ENDC);
   }
 
   // state interfaces that require cast

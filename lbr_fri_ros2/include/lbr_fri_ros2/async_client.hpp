@@ -47,7 +47,8 @@ protected:
   std::shared_ptr<BaseCommandInterface> command_interface_ptr_;
   std::shared_ptr<StateInterface> state_interface_ptr_;
 
-  bool open_loop_;
+  bool open_loop_;        // configured value, never overwritten
+  bool active_open_loop_; // effective value of the last command cycle
 };
 } // namespace lbr_fri_ros2
 #endif // LBR_FRI_ROS2__ASYNC_CLIENT_HPP_

@@ -7,7 +7,7 @@ AsyncClient::AsyncClient(const KUKA::FRI::EClientCommandMode &client_command_mod
                          const std::string &command_guard_variant,
                          const StateInterfaceParameters &state_interface_parameters,
                          const bool &open_loop)
-    : open_loop_(open_loop) {
+    : open_loop_(open_loop), active_open_loop_(open_loop) {
   RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
                      ColorScheme::OKBLUE << "Configuring client" << ColorScheme::ENDC);
 
@@ -80,24 +80,24 @@ void AsyncClient::waitForCommand() {
 }
 
 void AsyncClient::command() {
-  // if robot is in impedance or Cartesian impedance control mode, override open_loop_ to false
+  // decide open loop every cycle: only in position control mode, closed loop in impedance modes
+  // (control mode may change between sessions, e.g. switching between hard and soft mode)
   // also refer to https://github.com/lbr-stack/lbr_fri_ros2_stack/issues/226
   auto control_mode = robotState().getControlMode();
-  if (control_mode == KUKA::FRI::EControlMode::JOINT_IMP_CONTROL_MODE ||
-      control_mode == KUKA::FRI::EControlMode::CART_IMP_CONTROL_MODE) {
-    if (open_loop_) {
-      RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
-                         "Overriding open loop from '"
-                             << (open_loop_ ? "true" : "false")
-                             << "' to 'false' since LBR is in control mode '"
-                             << EnumMaps::control_mode_map(control_mode)
-                             << "'. Please refer to "
-                                "[https://github.com/lbr-stack/lbr_fri_ros2_stack/issues/226].");
-      open_loop_ = false;
-    }
+  bool open_loop =
+      open_loop_ && control_mode == KUKA::FRI::EControlMode::POSITION_CONTROL_MODE;
+  if (open_loop != active_open_loop_) {
+    RCLCPP_INFO_STREAM(rclcpp::get_logger(LOGGER_NAME),
+                       "Switching open loop from '"
+                           << (active_open_loop_ ? "true" : "false") << "' to '"
+                           << (open_loop ? "true" : "false") << "' since LBR is in control mode '"
+                           << EnumMaps::control_mode_map(control_mode)
+                           << "'. Please refer to "
+                              "[https://github.com/lbr-stack/lbr_fri_ros2_stack/issues/226].");
+    active_open_loop_ = open_loop;
   }
 
-  if (open_loop_) {
+  if (open_loop) {
     state_interface_ptr_->set_state_open_loop(robotState(),
                                               command_interface_ptr_->get_command().joint_position);
   } else {
