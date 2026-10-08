@@ -37,6 +37,8 @@ public:
   CommandGuard(const CommandGuardParameters &command_guard_parameters);
   virtual bool is_valid_command(const_idl_command_t_ref lbr_command,
                                 const_idl_state_t_ref lbr_state);
+  // forget previous measured joint position, e.g. after robot moved while not commanding
+  inline void reset() { prev_measured_joint_position_init_ = false; }
 
   void log_info() const;
 

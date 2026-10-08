@@ -67,6 +67,10 @@ void AsyncClient::onStateChange(KUKA::FRI::ESessionState old_state,
   // initialize command
   state_interface_ptr_->set_state(robotState());
   command_interface_ptr_->init_command(state_interface_ptr_->get_state());
+
+  // the guard only sees the robot while commanding, the robot may have moved in between (e.g.
+  // ptp on the controller when switching soft -> hard), which would be seen as a velocity jump
+  command_interface_ptr_->reset_command_guard();
 }
 
 void AsyncClient::monitor() { state_interface_ptr_->set_state(robotState()); };

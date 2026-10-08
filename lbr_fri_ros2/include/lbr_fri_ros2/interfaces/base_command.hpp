@@ -31,6 +31,7 @@ public:
   virtual void buffered_command_to_fri(fri_command_t_ref command, const_idl_state_t_ref state) = 0;
   inline void buffer_command_target(const_idl_command_t_ref command) { command_target_ = command; }
   void init_command(const_idl_state_t_ref state);
+  inline void reset_command_guard() { command_guard_->reset(); }
 
   inline const_idl_command_t_ref get_command() const { return command_; }
   inline const_idl_command_t_ref get_command_target() const { return command_target_; }
